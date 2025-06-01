@@ -1,0 +1,24 @@
+{
+  "name": "factory-framework",
+  "version": "1.0.0",
+  "description": "FACTORY framework Obsidian plugin",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && cp manifest.json styles.css ./factory-framework-plugin && mv main.js ./factory-framework-plugin",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "typescript": "^5.5.3",
+    "esbuild": "^0.25.5",
+    "obsidian": "^1.8.7",
+    "process": "^0.11.10",
+    "prettier": "^3.5.3"
+  },
+  "keywords": ["obsidian", "plugin", "factory"],
+  "license": "MIT",
+  "author": "rkurbatov@gmail.com",
+  "private": true
+}
