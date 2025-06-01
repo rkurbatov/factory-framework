@@ -1,0 +1,15 @@
+.template-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.template-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.template-item:hover {
+    background-color: var(--background-modifier-hover);
+}
