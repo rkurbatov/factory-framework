@@ -1,0 +1,11 @@
+{
+  "id": "factory-framework",
+  "name": "FACTORY Framework Pluging",
+  "version": "0.0.1",
+  "minAppVersion": "0.15.0",
+  "description": "Blah",
+  "author": "Roman Kurbatov",
+  "authorUrl": "",
+  "fundingUrl": "",
+  "isDesktopOnly": false
+}
