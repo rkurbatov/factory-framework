@@ -1,16 +1,29 @@
 import { Plugin, TAbstractFile, TFolder, TFile, App } from 'obsidian'
 
-import { PromiseConfirmModal } from './PromiseConfirmModal'
+import { PromiseConfirmModal } from './modals/PromiseConfirmModal'
+import { TemplateSelectorModal } from './modals/TemplateSelectorModal'
+
+import {
+    FactorySettings,
+    DEFAULT_SETTINGS,
+    FactorySettingTab,
+} from './FactorySettingsTab'
 
 export default class FactoryPlugin extends Plugin {
+    settings: FactorySettings = DEFAULT_SETTINGS
+
     async onload() {
+        await this.loadSettings()
+
         this.registerEvent(
             this.app.workspace.on('file-menu', (menu, file) => {
                 if (isMarkdownFile(file)) {
                     menu.addItem((item) => {
                         item.setTitle('Create Child Note')
                             .setIcon('git-branch-plus')
-                            .onClick(() => console.log('Hello!'))
+                            .onClick(() =>
+                                createChildNote(file as TFile, this.app)
+                            )
                     })
                 }
 
@@ -23,6 +36,20 @@ export default class FactoryPlugin extends Plugin {
                 }
             })
         )
+
+        this.addSettingTab(new FactorySettingTab(this.app, this))
+    }
+
+    async loadSettings() {
+        this.settings = Object.assign(
+            {},
+            DEFAULT_SETTINGS,
+            await this.loadData()
+        )
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings)
     }
 }
 
@@ -51,4 +78,9 @@ async function clearCanvas(canvasFile: TFile, app: App): Promise<void> {
         }
         await app.vault.modify(canvasFile, JSON.stringify(emptyCanvas, null, 2))
     }
+}
+
+async function createChildNote(file: TFile, app: App) {
+    const modal = new TemplateSelectorModal(app, [], () => {})
+    await modal.open()
 }

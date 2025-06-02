@@ -26,9 +26,9 @@ __export(main_exports, {
   default: () => FactoryPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian2 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
-// src/PromiseConfirmModal.ts
+// src/modals/PromiseConfirmModal.ts
 var import_obsidian = require("obsidian");
 var PromiseConfirmModal = class extends import_obsidian.Modal {
   constructor(app, message) {
@@ -40,12 +40,12 @@ var PromiseConfirmModal = class extends import_obsidian.Modal {
     const { contentEl } = this;
     contentEl.createEl("p", { text: this.message });
     new import_obsidian.Setting(contentEl).addButton(
-      (btn) => btn.setButtonText("\u0414\u0430").setCta().onClick(() => {
+      (btn) => btn.setButtonText("Yes").setCta().onClick(() => {
         this.resolvePromise(true);
         this.close();
       })
     ).addButton(
-      (btn) => btn.setButtonText("\u041D\u0435\u0442").onClick(() => {
+      (btn) => btn.setButtonText("No").onClick(() => {
         this.resolvePromise(false);
         this.close();
       })
@@ -65,14 +65,82 @@ var PromiseConfirmModal = class extends import_obsidian.Modal {
   }
 };
 
+// src/modals/TemplateSelectorModal.ts
+var import_obsidian2 = require("obsidian");
+var TemplateSelectorModal = class extends import_obsidian2.Modal {
+  templates;
+  onChoose;
+  constructor(app, templates, onChoose) {
+    super(app);
+    this.templates = templates;
+    this.onChoose = onChoose;
+  }
+  onOpen() {
+    this.contentEl.empty();
+    this.contentEl.createEl("h2", { text: "Choose Template" });
+    const templateList = this.contentEl.createEl("div", {
+      cls: "template-list"
+    });
+    this.templates.forEach((template) => {
+      const templateItem = templateList.createEl("div", {
+        cls: "template-item",
+        text: template.basename
+      });
+      templateItem.onclick = () => {
+        this.onChoose(template);
+        this.close();
+      };
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// src/FactorySettingsTab.ts
+var import_obsidian3 = require("obsidian");
+var DEFAULT_SETTINGS = {
+  templatesFolder: "Templates",
+  defaultTemplate: "",
+  upFieldName: "up"
+};
+var FactorySettingTab = class extends import_obsidian3.PluginSettingTab {
+  plugin;
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.createEl("h2", { text: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0434\u043E\u0447\u0435\u0440\u043D\u0438\u0445 \u0437\u0430\u043C\u0435\u0442\u043E\u043A" });
+    new import_obsidian3.Setting(containerEl).setName("\u041F\u0430\u043F\u043A\u0430 \u0441 \u0442\u0435\u043C\u043F\u043B\u0435\u0439\u0442\u0430\u043C\u0438").setDesc("\u041F\u0443\u0442\u044C \u043A \u043F\u0430\u043F\u043A\u0435 \u0441 \u0442\u0435\u043C\u043F\u043B\u0435\u0439\u0442\u0430\u043C\u0438").addText(
+      (text) => text.setPlaceholder("Templates").setValue(this.plugin.settings.templatesFolder).onChange(async (value) => {
+        this.plugin.settings.templatesFolder = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian3.Setting(containerEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u043E\u043B\u044F \u0441\u0432\u044F\u0437\u0438").setDesc("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u043E\u043B\u044F \u0434\u043B\u044F \u0441\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u0443\u044E \u0437\u0430\u043C\u0435\u0442\u043A\u0443").addText(
+      (text) => text.setPlaceholder("up").setValue(this.plugin.settings.upFieldName).onChange(async (value) => {
+        this.plugin.settings.upFieldName = value;
+        await this.plugin.saveSettings();
+      })
+    );
+  }
+};
+
 // src/main.ts
-var FactoryPlugin = class extends import_obsidian2.Plugin {
+var FactoryPlugin = class extends import_obsidian4.Plugin {
+  settings = DEFAULT_SETTINGS;
   async onload() {
+    await this.loadSettings();
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
         if (isMarkdownFile(file)) {
           menu.addItem((item) => {
-            item.setTitle("Create Child Note").setIcon("git-branch-plus").onClick(() => console.log("Hello!"));
+            item.setTitle("Create Child Note").setIcon("git-branch-plus").onClick(
+              () => createChildNote(file, this.app)
+            );
           });
         }
         if (isDesktopCanvasFile(file)) {
@@ -82,16 +150,30 @@ var FactoryPlugin = class extends import_obsidian2.Plugin {
         }
       })
     );
+    this.addSettingTab(new FactorySettingTab(this.app, this));
+  }
+  async loadSettings() {
+    this.settings = Object.assign(
+      {},
+      DEFAULT_SETTINGS,
+      await this.loadData()
+    );
+  }
+  async saveSettings() {
+    await this.saveData(this.settings);
   }
 };
 function isMarkdownFile(file) {
-  return file instanceof import_obsidian2.TFile && file.extension === "md";
+  return file instanceof import_obsidian4.TFile && file.extension === "md";
 }
 function isDesktopCanvasFile(file) {
-  return file instanceof import_obsidian2.TFile && file.path === "Desktop.canvas";
+  return file instanceof import_obsidian4.TFile && file.path === "Desktop.canvas";
 }
 async function clearCanvas(canvasFile, app) {
-  const modal = new PromiseConfirmModal(app, "Do you want to clear desktop?");
+  const modal = new PromiseConfirmModal(
+    app,
+    "Do you want to clear your Desktop?"
+  );
   const confirmed = await modal.openAndWait();
   if (confirmed) {
     const emptyCanvas = {
@@ -100,4 +182,9 @@ async function clearCanvas(canvasFile, app) {
     };
     await app.vault.modify(canvasFile, JSON.stringify(emptyCanvas, null, 2));
   }
+}
+async function createChildNote(file, app) {
+  const modal = new TemplateSelectorModal(app, [], () => {
+  });
+  await modal.open();
 }
