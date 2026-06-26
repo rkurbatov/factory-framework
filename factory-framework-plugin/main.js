@@ -210,6 +210,133 @@ var FactorySettingTab = class extends import_obsidian4.PluginSettingTab {
 // src/main.ts
 var FactoryPlugin = class extends import_obsidian5.Plugin {
   settings = DEFAULT_SETTINGS;
+  async onload() {
+    await this.loadSettings();
+    this.app.workspace.onLayoutReady(() => {
+      this.updateRecentBadges();
+    });
+    this.registerEvent(
+      this.app.vault.on("create", () => {
+        this.updateRecentBadges();
+      })
+    );
+    this.registerInterval(
+      window.setInterval(
+        () => {
+          this.updateRecentBadges();
+        },
+        60 * 60 * 1e3
+      )
+    );
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (isMarkdownFile(file)) {
+          menu.addItem((item) => {
+            item.setTitle("Create Child Note").setIcon("git-branch-plus").onClick(() => createChildNote(file, this));
+          });
+        }
+        if (isDesktopCanvasFile(file)) {
+          menu.addItem((item) => {
+            item.setTitle("Clear Desktop").setIcon("square-x").onClick(() => clearCanvas(file, this.app));
+          });
+        }
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (file) this.renderBreadcrumbs(file);
+      })
+    );
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file) => {
+        const activeView = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+        if (activeView && activeView.file?.path === file.path) {
+          this.renderBreadcrumbs(file);
+        }
+      })
+    );
+    this.addSettingTab(new FactorySettingTab(this.app, this));
+  }
+  onunload() {
+    const badges = document.querySelectorAll(".factory-recent-badge");
+    badges.forEach((badge) => badge.remove());
+    const breadcrumbs = document.querySelectorAll(
+      ".factory-breadcrumbs-container"
+    );
+    breadcrumbs.forEach((bc) => bc.remove());
+  }
+  async loadSettings() {
+    this.settings = Object.assign(
+      {},
+      DEFAULT_SETTINGS,
+      await this.loadData()
+    );
+  }
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+  async renderBreadcrumbs(file) {
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+    if (!view) return;
+    const existing = view.containerEl.querySelector(
+      ".factory-breadcrumbs-container"
+    );
+    if (existing) existing.remove();
+    const trail = await this.buildBreadcrumbTrail(file);
+    if (trail.length <= 1) return;
+    const bcContainer = document.createElement("div");
+    bcContainer.addClass("factory-breadcrumbs-container");
+    trail.forEach((item, index) => {
+      const span = bcContainer.createEl("span", {
+        text: item.basename,
+        cls: "factory-breadcrumb-item"
+      });
+      if (item.file) {
+        span.addClass("is-clickable");
+        span.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.app.workspace.getLeaf(false).openFile(item.file);
+        });
+      }
+      if (index < trail.length - 1) {
+        const sep = bcContainer.createEl("span", {
+          cls: "factory-breadcrumb-separator"
+        });
+        (0, import_obsidian5.setIcon)(sep, "chevron-right");
+      }
+    });
+    const viewContent = view.containerEl.querySelector(".view-content");
+    if (viewContent) {
+      viewContent.prepend(bcContainer);
+    }
+  }
+  async buildBreadcrumbTrail(file) {
+    const trail = [];
+    let currentFile = file;
+    const maxDepth = 15;
+    let depth = 0;
+    const visited = /* @__PURE__ */ new Set();
+    while (currentFile && depth < maxDepth) {
+      if (visited.has(currentFile.path)) {
+        trail.push({ basename: "\u{1F504} \u0426\u0438\u043A\u043B", file: null });
+        break;
+      }
+      visited.add(currentFile.path);
+      trail.push({ basename: currentFile.basename, file: currentFile });
+      const cache = this.app.metadataCache.getFileCache(currentFile);
+      const upValue = cache?.frontmatter?.[this.settings.upFieldName];
+      if (!upValue) break;
+      const linkMatch = String(upValue).match(/\[\[(.*?)\]\]/);
+      const parentLinkText = linkMatch ? linkMatch[1].split("|")[0] : String(upValue);
+      const parentFile = this.app.metadataCache.getFirstLinkpathDest(
+        parentLinkText,
+        currentFile.path
+      );
+      currentFile = parentFile;
+      depth++;
+    }
+    return trail.reverse();
+  }
   updateRecentBadges() {
     const now = Date.now();
     const fileExplorers = this.app.workspace.getLeavesOfType("file-explorer");
@@ -242,56 +369,6 @@ var FactoryPlugin = class extends import_obsidian5.Plugin {
         }
       }
     }
-  }
-  async onload() {
-    await this.loadSettings();
-    this.app.workspace.onLayoutReady(() => {
-      this.updateRecentBadges();
-    });
-    this.registerEvent(
-      this.app.vault.on("create", () => {
-        this.updateRecentBadges();
-      })
-    );
-    this.registerInterval(
-      window.setInterval(
-        () => {
-          this.updateRecentBadges();
-        },
-        60 * 60 * 1e3
-      )
-    );
-    this.registerEvent(
-      this.app.workspace.on("file-menu", (menu, file) => {
-        if (isMarkdownFile(file)) {
-          menu.addItem((item) => {
-            item.setTitle("Create Child Note").setIcon("git-branch-plus").onClick(
-              () => createChildNote(file, this)
-            );
-          });
-        }
-        if (isDesktopCanvasFile(file)) {
-          menu.addItem((item) => {
-            item.setTitle("Clear Desktop").setIcon("square-x").onClick(() => clearCanvas(file, this.app));
-          });
-        }
-      })
-    );
-    this.addSettingTab(new FactorySettingTab(this.app, this));
-  }
-  onunload() {
-    const badges = document.querySelectorAll(".factory-recent-badge");
-    badges.forEach((badge) => badge.remove());
-  }
-  async loadSettings() {
-    this.settings = Object.assign(
-      {},
-      DEFAULT_SETTINGS,
-      await this.loadData()
-    );
-  }
-  async saveSettings() {
-    await this.saveData(this.settings);
   }
 };
 function isMarkdownFile(file) {

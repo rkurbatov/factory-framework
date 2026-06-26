@@ -38,3 +38,65 @@
     background-color: var(--background-modifier-border);
     color: var(--text-muted);
 }
+
+/* Breadcrumbs Container */
+.factory-breadcrumbs-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    /* Отступы, соответствующие стандартным паддингам редактора */
+    padding: 12px var(--size-4-8);
+    margin-bottom: 8px;
+
+    background-color: transparent; /* Убрал фон, чтобы выглядело чище, как часть заголовка */
+    border-bottom: 1px solid var(--background-modifier-border);
+
+    /* Принудительный интерфейсный шрифт и уменьшенный размер */
+    font-family: var(--font-interface);
+    font-size: var(--font-ui-small);
+
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.factory-breadcrumb-item {
+    transition: color 0.15s ease;
+}
+
+.factory-breadcrumb-item.is-clickable {
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.factory-breadcrumb-item.is-clickable:hover {
+    color: var(--text-accent);
+}
+
+/* Выделение текущей заметки */
+.factory-breadcrumb-item:last-child {
+    font-weight: 600;
+    color: var(--text-normal);
+    pointer-events: none; /* Защита от клика по текущему файлу */
+}
+
+/* Стили для SVG-иконки разделителя */
+.factory-breadcrumb-separator {
+    display: flex;
+    align-items: center;
+    margin: 0 6px;
+    color: var(--text-faint);
+}
+
+.factory-breadcrumb-separator svg {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2px;
+}
+
+/* Игнорирование элемента при печати и экспорте в PDF */
+@media print {
+    .factory-breadcrumbs-container {
+        display: none !important;
+    }
+}
