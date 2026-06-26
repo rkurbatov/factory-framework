@@ -2,6 +2,7 @@ import { Plugin, TAbstractFile, TFolder, TFile, App } from 'obsidian'
 
 import { PromiseConfirmModal } from './modals/PromiseConfirmModal'
 import { TemplateSelectorModal } from './modals/TemplateSelectorModal'
+import { FileNameModal } from './modals/FileNameModal'
 
 import {
     FactorySettings,
@@ -93,7 +94,7 @@ export default class FactoryPlugin extends Plugin {
                         item.setTitle('Create Child Note')
                             .setIcon('git-branch-plus')
                             .onClick(() =>
-                                createChildNote(file as TFile, this.app)
+                                createChildNote(file as TFile, this)
                             )
                     })
                 }
@@ -157,8 +158,84 @@ async function clearCanvas(canvasFile: TFile, app: App): Promise<void> {
     }
 }
 
-async function createChildNote(file: TFile, app: App) {
-    const modal = new TemplateSelectorModal(app, [], () => {})
-    await modal.open()
+async function createChildNote(parentFile: TFile, plugin: FactoryPlugin) {
+    const { app, settings } = plugin
+    const templateFolder = app.vault.getAbstractFileByPath(
+        settings.templatesFolder
+    )
+
+    if (!(templateFolder instanceof TFolder)) {
+        console.error('Template folder not found')
+        return
+    }
+
+    const templates = templateFolder.children.filter(
+        (f): f is TFile => f instanceof TFile && f.extension === 'md'
+    )
+
+    const modal = new TemplateSelectorModal(
+        app,
+        templates,
+        async (template: TFile) => {
+            // Вызов окна ввода имени после выбора шаблона
+            const nameModal = new FileNameModal(app)
+            const inputName = await nameModal.openAndWait()
+
+            // Прерывание, если нажата "Отмена" или введено пустое имя
+            if (!inputName) return
+
+            try {
+                const rawContent = await app.vault.read(template)
+
+                // Парсинг тегов шаблона {{title}}, {{date:FORMAT}}, {{time:FORMAT}}
+                const content = rawContent
+                    .replace(/{{title}}/g, inputName)
+                    .replace(/{{(?:date|time):?(.*?)}}/g, (_, format) => {
+                        return window.moment().format(format || 'YYYY-MM-DD')
+                    })
+
+                const targetFolderPath = settings.childNotesFolder || ''
+
+                if (targetFolderPath) {
+                    const folderExists =
+                        app.vault.getAbstractFileByPath(targetFolderPath)
+                    if (!folderExists) {
+                        await app.vault.createFolder(targetFolderPath)
+                    }
+                }
+
+                const newFileName = `${inputName}.md`
+                let newFilePath = targetFolderPath
+                    ? `${targetFolderPath}/${newFileName}`
+                    : newFileName
+
+                // Защита от перезаписи существующего файла
+                let counter = 1
+                while (app.vault.getAbstractFileByPath(newFilePath)) {
+                    const incrementalName = `${inputName} (${counter}).md`
+                    newFilePath = targetFolderPath
+                        ? `${targetFolderPath}/${incrementalName}`
+                        : incrementalName
+                    counter++
+                }
+
+                const newFile = await app.vault.create(newFilePath, content)
+
+                await app.fileManager.processFrontMatter(
+                    newFile,
+                    (frontmatter) => {
+                        frontmatter[settings.upFieldName] =
+                            `[[${parentFile.basename}]]`
+                    }
+                )
+
+                await app.workspace.getLeaf('tab').openFile(newFile)
+            } catch (error) {
+                console.error('Error creating child note:', error)
+            }
+        }
+    )
+
+    modal.open()
 }
 

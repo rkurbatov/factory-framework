@@ -26,7 +26,7 @@ __export(main_exports, {
   default: () => FactoryPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/modals/PromiseConfirmModal.ts
 var import_obsidian = require("obsidian");
@@ -97,16 +97,68 @@ var TemplateSelectorModal = class extends import_obsidian2.Modal {
   }
 };
 
-// src/FactorySettingsTab.ts
+// src/modals/FileNameModal.ts
 var import_obsidian3 = require("obsidian");
+var FileNameModal = class extends import_obsidian3.Modal {
+  resolvePromise = () => void 0;
+  result = "";
+  constructor(app) {
+    super(app);
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.createEl("h2", { text: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u043C\u0435\u0442\u043A\u0438" });
+    const setting = new import_obsidian3.Setting(contentEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 (\u0431\u0435\u0437 .md)").addText((text) => {
+      text.onChange((value) => {
+        this.result = value.trim();
+      });
+      text.inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.resolvePromise(this.result);
+          this.close();
+        }
+      });
+      window.setTimeout(() => text.inputEl.focus(), 10);
+    });
+    new import_obsidian3.Setting(contentEl).addButton(
+      (btn) => btn.setButtonText("\u0421\u043E\u0437\u0434\u0430\u0442\u044C").setCta().onClick(() => {
+        this.resolvePromise(this.result);
+        this.close();
+      })
+    ).addButton(
+      (btn) => btn.setButtonText("\u041E\u0442\u043C\u0435\u043D\u0430").onClick(() => {
+        this.resolvePromise(null);
+        this.close();
+      })
+    );
+  }
+  async openAndWait() {
+    return new Promise((resolve) => {
+      this.resolvePromise = resolve;
+      this.open();
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+    if (this.resolvePromise) {
+      this.resolvePromise(null);
+    }
+  }
+};
+
+// src/FactorySettingsTab.ts
+var import_obsidian4 = require("obsidian");
 var DEFAULT_SETTINGS = {
   templatesFolder: "Templates",
   defaultTemplate: "",
   upFieldName: "up",
   showRecentBadges: true,
-  recentBadgesDays: 7
+  recentBadgesDays: 7,
+  childNotesFolder: "O/_Pool"
+  // <-- Дефолтное значение
 };
-var FactorySettingTab = class extends import_obsidian3.PluginSettingTab {
+var FactorySettingTab = class extends import_obsidian4.PluginSettingTab {
   plugin;
   constructor(app, plugin) {
     super(app, plugin);
@@ -116,29 +168,35 @@ var FactorySettingTab = class extends import_obsidian3.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0434\u043E\u0447\u0435\u0440\u043D\u0438\u0445 \u0437\u0430\u043C\u0435\u0442\u043E\u043A" });
-    new import_obsidian3.Setting(containerEl).setName("\u041F\u0430\u043F\u043A\u0430 \u0441 \u0442\u0435\u043C\u043F\u043B\u0435\u0439\u0442\u0430\u043C\u0438").setDesc("\u041F\u0443\u0442\u044C \u043A \u043F\u0430\u043F\u043A\u0435 \u0441 \u0442\u0435\u043C\u043F\u043B\u0435\u0439\u0442\u0430\u043C\u0438").addText(
+    new import_obsidian4.Setting(containerEl).setName("\u041F\u0430\u043F\u043A\u0430 \u0441 \u0442\u0435\u043C\u043F\u043B\u0435\u0439\u0442\u0430\u043C\u0438").setDesc("\u041F\u0443\u0442\u044C \u043A \u043F\u0430\u043F\u043A\u0435 \u0441 \u0442\u0435\u043C\u043F\u043B\u0435\u0439\u0442\u0430\u043C\u0438").addText(
       (text) => text.setPlaceholder("Templates").setValue(this.plugin.settings.templatesFolder).onChange(async (value) => {
         this.plugin.settings.templatesFolder = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian3.Setting(containerEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u043E\u043B\u044F \u0441\u0432\u044F\u0437\u0438").setDesc("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u043E\u043B\u044F \u0434\u043B\u044F \u0441\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u0443\u044E \u0437\u0430\u043C\u0435\u0442\u043A\u0443").addText(
+    new import_obsidian4.Setting(containerEl).setName("\u041F\u0430\u043F\u043A\u0430 \u0434\u043B\u044F \u043D\u043E\u0432\u044B\u0445 \u0437\u0430\u043C\u0435\u0442\u043E\u043A").setDesc("\u041F\u0443\u0442\u044C \u043A \u043F\u0430\u043F\u043A\u0435, \u043A\u0443\u0434\u0430 \u0431\u0443\u0434\u0443\u0442 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0442\u044C\u0441\u044F \u0434\u043E\u0447\u0435\u0440\u043D\u0438\u0435 \u0437\u0430\u043C\u0435\u0442\u043A\u0438").addText(
+      (text) => text.setPlaceholder("O/_Pool").setValue(this.plugin.settings.childNotesFolder).onChange(async (value) => {
+        this.plugin.settings.childNotesFolder = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian4.Setting(containerEl).setName("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u043E\u043B\u044F \u0441\u0432\u044F\u0437\u0438").setDesc(
+      "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u043E\u043B\u044F \u0434\u043B\u044F \u0441\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u0443\u044E \u0437\u0430\u043C\u0435\u0442\u043A\u0443 \u0432 frontmatter"
+    ).addText(
       (text) => text.setPlaceholder("up").setValue(this.plugin.settings.upFieldName).onChange(async (value) => {
         this.plugin.settings.upFieldName = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h2", { text: "\u041E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u043D\u0435\u0434\u0430\u0432\u043D\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432" });
-    new import_obsidian3.Setting(containerEl).setName("\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u0431\u0435\u0439\u0434\u0436\u0438 \u043D\u0435\u0434\u0430\u0432\u043D\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432").setDesc(
-      "\u041E\u0442\u043E\u0431\u0440\u0430\u0436\u0430\u0442\u044C \u043C\u0435\u0442\u043A\u0443 \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u0430 \u0434\u043B\u044F \u043D\u0435\u0434\u0430\u0432\u043D\u043E \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0445 \u0437\u0430\u043C\u0435\u0442\u043E\u043A \u0432 \u0444\u0430\u0439\u043B\u043E\u0432\u043E\u043C \u043C\u0435\u043D\u0435\u0434\u0436\u0435\u0440\u0435"
-    ).addToggle(
+    new import_obsidian4.Setting(containerEl).setName("\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u0431\u0435\u0439\u0434\u0436\u0438 \u043D\u0435\u0434\u0430\u0432\u043D\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432").addToggle(
       (toggle) => toggle.setValue(this.plugin.settings.showRecentBadges).onChange(async (value) => {
         this.plugin.settings.showRecentBadges = value;
         await this.plugin.saveSettings();
         this.plugin.updateRecentBadges();
       })
     );
-    new import_obsidian3.Setting(containerEl).setName("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u0434\u043D\u0435\u0439 \u0434\u043B\u044F \u0431\u0435\u0439\u0434\u0436\u0430").setDesc("\u041C\u0430\u043A\u0441\u0438\u043C\u0430\u043B\u044C\u043D\u044B\u0439 \u0432\u043E\u0437\u0440\u0430\u0441\u0442 \u0444\u0430\u0439\u043B\u0430 \u0432 \u0434\u043D\u044F\u0445 \u0434\u043B\u044F \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u043C\u0435\u0442\u043A\u0438").addText(
+    new import_obsidian4.Setting(containerEl).setName("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u0434\u043D\u0435\u0439 \u0434\u043B\u044F \u0431\u0435\u0439\u0434\u0436\u0430").addText(
       (text) => text.setPlaceholder("7").setValue(this.plugin.settings.recentBadgesDays.toString()).onChange(async (value) => {
         const days = parseInt(value, 10);
         this.plugin.settings.recentBadgesDays = isNaN(days) ? 7 : days;
@@ -150,7 +208,7 @@ var FactorySettingTab = class extends import_obsidian3.PluginSettingTab {
 };
 
 // src/main.ts
-var FactoryPlugin = class extends import_obsidian4.Plugin {
+var FactoryPlugin = class extends import_obsidian5.Plugin {
   settings = DEFAULT_SETTINGS;
   updateRecentBadges() {
     const now = Date.now();
@@ -167,7 +225,7 @@ var FactoryPlugin = class extends import_obsidian4.Plugin {
           continue;
         }
         const file = item.file;
-        if (!(file instanceof import_obsidian4.TFile) || file.extension !== "md" || path.startsWith(this.settings.templatesFolder)) {
+        if (!(file instanceof import_obsidian5.TFile) || file.extension !== "md" || path.startsWith(this.settings.templatesFolder)) {
           continue;
         }
         const diffTime = Math.abs(now - file.stat.ctime);
@@ -208,7 +266,7 @@ var FactoryPlugin = class extends import_obsidian4.Plugin {
         if (isMarkdownFile(file)) {
           menu.addItem((item) => {
             item.setTitle("Create Child Note").setIcon("git-branch-plus").onClick(
-              () => createChildNote(file, this.app)
+              () => createChildNote(file, this)
             );
           });
         }
@@ -220,6 +278,10 @@ var FactoryPlugin = class extends import_obsidian4.Plugin {
       })
     );
     this.addSettingTab(new FactorySettingTab(this.app, this));
+  }
+  onunload() {
+    const badges = document.querySelectorAll(".factory-recent-badge");
+    badges.forEach((badge) => badge.remove());
   }
   async loadSettings() {
     this.settings = Object.assign(
@@ -233,10 +295,10 @@ var FactoryPlugin = class extends import_obsidian4.Plugin {
   }
 };
 function isMarkdownFile(file) {
-  return file instanceof import_obsidian4.TFile && file.extension === "md";
+  return file instanceof import_obsidian5.TFile && file.extension === "md";
 }
 function isDesktopCanvasFile(file) {
-  return file instanceof import_obsidian4.TFile && file.path === "Desktop.canvas";
+  return file instanceof import_obsidian5.TFile && file.path === "Desktop.canvas";
 }
 async function clearCanvas(canvasFile, app) {
   const modal = new PromiseConfirmModal(
@@ -252,8 +314,57 @@ async function clearCanvas(canvasFile, app) {
     await app.vault.modify(canvasFile, JSON.stringify(emptyCanvas, null, 2));
   }
 }
-async function createChildNote(file, app) {
-  const modal = new TemplateSelectorModal(app, [], () => {
-  });
-  await modal.open();
+async function createChildNote(parentFile, plugin) {
+  const { app, settings } = plugin;
+  const templateFolder = app.vault.getAbstractFileByPath(
+    settings.templatesFolder
+  );
+  if (!(templateFolder instanceof import_obsidian5.TFolder)) {
+    console.error("Template folder not found");
+    return;
+  }
+  const templates = templateFolder.children.filter(
+    (f) => f instanceof import_obsidian5.TFile && f.extension === "md"
+  );
+  const modal = new TemplateSelectorModal(
+    app,
+    templates,
+    async (template) => {
+      const nameModal = new FileNameModal(app);
+      const inputName = await nameModal.openAndWait();
+      if (!inputName) return;
+      try {
+        const rawContent = await app.vault.read(template);
+        const content = rawContent.replace(/{{title}}/g, inputName).replace(/{{(?:date|time):?(.*?)}}/g, (_, format) => {
+          return window.moment().format(format || "YYYY-MM-DD");
+        });
+        const targetFolderPath = settings.childNotesFolder || "";
+        if (targetFolderPath) {
+          const folderExists = app.vault.getAbstractFileByPath(targetFolderPath);
+          if (!folderExists) {
+            await app.vault.createFolder(targetFolderPath);
+          }
+        }
+        const newFileName = `${inputName}.md`;
+        let newFilePath = targetFolderPath ? `${targetFolderPath}/${newFileName}` : newFileName;
+        let counter = 1;
+        while (app.vault.getAbstractFileByPath(newFilePath)) {
+          const incrementalName = `${inputName} (${counter}).md`;
+          newFilePath = targetFolderPath ? `${targetFolderPath}/${incrementalName}` : incrementalName;
+          counter++;
+        }
+        const newFile = await app.vault.create(newFilePath, content);
+        await app.fileManager.processFrontMatter(
+          newFile,
+          (frontmatter) => {
+            frontmatter[settings.upFieldName] = `[[${parentFile.basename}]]`;
+          }
+        );
+        await app.workspace.getLeaf("tab").openFile(newFile);
+      } catch (error) {
+        console.error("Error creating child note:", error);
+      }
+    }
+  );
+  modal.open();
 }

@@ -1,13 +1,13 @@
 import { App, PluginSettingTab, Setting } from 'obsidian'
-
 import { default as FactoryPlugin } from './main'
 
 export interface FactorySettings {
     templatesFolder: string
     defaultTemplate: string
     upFieldName: string
-    showRecentBadges: boolean // Флаг включения/отключения
-    recentBadgesDays: number // Количество дней
+    showRecentBadges: boolean
+    recentBadgesDays: number
+    childNotesFolder: string // <-- Новый параметр
 }
 
 export const DEFAULT_SETTINGS: FactorySettings = {
@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: FactorySettings = {
     upFieldName: 'up',
     showRecentBadges: true,
     recentBadgesDays: 7,
+    childNotesFolder: 'O/_Pool', // <-- Дефолтное значение
 }
 
 export class FactorySettingTab extends PluginSettingTab {
@@ -46,8 +47,23 @@ export class FactorySettingTab extends PluginSettingTab {
             )
 
         new Setting(containerEl)
+            .setName('Папка для новых заметок')
+            .setDesc('Путь к папке, куда будут сохраняться дочерние заметки')
+            .addText((text) =>
+                text
+                    .setPlaceholder('O/_Pool')
+                    .setValue(this.plugin.settings.childNotesFolder)
+                    .onChange(async (value) => {
+                        this.plugin.settings.childNotesFolder = value
+                        await this.plugin.saveSettings()
+                    })
+            )
+
+        new Setting(containerEl)
             .setName('Название поля связи')
-            .setDesc('Название поля для ссылки на родительскую заметку')
+            .setDesc(
+                'Название поля для ссылки на родительскую заметку в frontmatter'
+            )
             .addText((text) =>
                 text
                     .setPlaceholder('up')
@@ -62,9 +78,6 @@ export class FactorySettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Показывать бейджи недавних файлов')
-            .setDesc(
-                'Отображать метку возраста для недавно созданных заметок в файловом менеджере'
-            )
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.showRecentBadges)
@@ -77,7 +90,6 @@ export class FactorySettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Количество дней для бейджа')
-            .setDesc('Максимальный возраст файла в днях для отображения метки')
             .addText((text) =>
                 text
                     .setPlaceholder('7')
