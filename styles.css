@@ -13,3 +13,28 @@
 .template-item:hover {
     background-color: var(--background-modifier-hover);
 }
+
+.nav-file-title {
+    display: flex;
+    align-items: center;
+}
+
+.factory-recent-badge {
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: auto;
+    font-weight: 600;
+}
+
+/* Сегодня */
+.factory-recent-badge[data-age="0"] {
+    background-color: var(--color-yellow);
+    color: var(--text-on-accent);
+}
+
+/* Вчера и старше */
+.factory-recent-badge:not([data-age="0"]) {
+    background-color: var(--background-modifier-border);
+    color: var(--text-muted);
+}

@@ -102,7 +102,9 @@ var import_obsidian3 = require("obsidian");
 var DEFAULT_SETTINGS = {
   templatesFolder: "Templates",
   defaultTemplate: "",
-  upFieldName: "up"
+  upFieldName: "up",
+  showRecentBadges: true,
+  recentBadgesDays: 7
 };
 var FactorySettingTab = class extends import_obsidian3.PluginSettingTab {
   plugin;
@@ -126,14 +128,81 @@ var FactorySettingTab = class extends import_obsidian3.PluginSettingTab {
         await this.plugin.saveSettings();
       })
     );
+    containerEl.createEl("h2", { text: "\u041E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u043D\u0435\u0434\u0430\u0432\u043D\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432" });
+    new import_obsidian3.Setting(containerEl).setName("\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u0431\u0435\u0439\u0434\u0436\u0438 \u043D\u0435\u0434\u0430\u0432\u043D\u0438\u0445 \u0444\u0430\u0439\u043B\u043E\u0432").setDesc(
+      "\u041E\u0442\u043E\u0431\u0440\u0430\u0436\u0430\u0442\u044C \u043C\u0435\u0442\u043A\u0443 \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u0430 \u0434\u043B\u044F \u043D\u0435\u0434\u0430\u0432\u043D\u043E \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0445 \u0437\u0430\u043C\u0435\u0442\u043E\u043A \u0432 \u0444\u0430\u0439\u043B\u043E\u0432\u043E\u043C \u043C\u0435\u043D\u0435\u0434\u0436\u0435\u0440\u0435"
+    ).addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.showRecentBadges).onChange(async (value) => {
+        this.plugin.settings.showRecentBadges = value;
+        await this.plugin.saveSettings();
+        this.plugin.updateRecentBadges();
+      })
+    );
+    new import_obsidian3.Setting(containerEl).setName("\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u0434\u043D\u0435\u0439 \u0434\u043B\u044F \u0431\u0435\u0439\u0434\u0436\u0430").setDesc("\u041C\u0430\u043A\u0441\u0438\u043C\u0430\u043B\u044C\u043D\u044B\u0439 \u0432\u043E\u0437\u0440\u0430\u0441\u0442 \u0444\u0430\u0439\u043B\u0430 \u0432 \u0434\u043D\u044F\u0445 \u0434\u043B\u044F \u043E\u0442\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u044F \u043C\u0435\u0442\u043A\u0438").addText(
+      (text) => text.setPlaceholder("7").setValue(this.plugin.settings.recentBadgesDays.toString()).onChange(async (value) => {
+        const days = parseInt(value, 10);
+        this.plugin.settings.recentBadgesDays = isNaN(days) ? 7 : days;
+        await this.plugin.saveSettings();
+        this.plugin.updateRecentBadges();
+      })
+    );
   }
 };
 
 // src/main.ts
 var FactoryPlugin = class extends import_obsidian4.Plugin {
   settings = DEFAULT_SETTINGS;
+  updateRecentBadges() {
+    const now = Date.now();
+    const fileExplorers = this.app.workspace.getLeavesOfType("file-explorer");
+    for (const leaf of fileExplorers) {
+      const fileItems = Object.entries(leaf.view.fileItems);
+      for (const [path, item] of fileItems) {
+        const el = item.el;
+        const existingBadge = el.querySelector(".factory-recent-badge");
+        if (existingBadge) {
+          existingBadge.remove();
+        }
+        if (!this.settings.showRecentBadges) {
+          continue;
+        }
+        const file = item.file;
+        if (!(file instanceof import_obsidian4.TFile) || file.extension !== "md" || path.startsWith(this.settings.templatesFolder)) {
+          continue;
+        }
+        const diffTime = Math.abs(now - file.stat.ctime);
+        const diffDays = Math.floor(diffTime / (1e3 * 60 * 60 * 24));
+        if (diffDays <= this.settings.recentBadgesDays) {
+          const titleInner = el.querySelector(".nav-file-title");
+          if (titleInner) {
+            const badge = document.createElement("span");
+            badge.addClass("factory-recent-badge");
+            badge.setAttribute("data-age", diffDays.toString());
+            badge.setText(diffDays === 0 ? "new" : `${diffDays}d`);
+            titleInner.appendChild(badge);
+          }
+        }
+      }
+    }
+  }
   async onload() {
     await this.loadSettings();
+    this.app.workspace.onLayoutReady(() => {
+      this.updateRecentBadges();
+    });
+    this.registerEvent(
+      this.app.vault.on("create", () => {
+        this.updateRecentBadges();
+      })
+    );
+    this.registerInterval(
+      window.setInterval(
+        () => {
+          this.updateRecentBadges();
+        },
+        60 * 60 * 1e3
+      )
+    );
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
         if (isMarkdownFile(file)) {
